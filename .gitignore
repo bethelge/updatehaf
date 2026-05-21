@@ -1,0 +1,68 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional eslint / stylelint cache
+.eslintcache
+.stylelintcache
+
+# Output / Build directories
+dist/
+dist-ssr/
+build/
+out/
+.output/
+.vinxi/
+.tanstack/**
+.nitro/
+
+# Wrangler / Cloudflare
+.wrangler/
+.dev.vars
+
+# Environment variables and secrets
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+*.local
+
+# Server dynamic uploads (ignores everything in uploads except the .gitkeep files)
+server/trade-backend/uploads/*
+!server/trade-backend/uploads/.gitkeep
+server/trade-backend/uploads/products/*
+!server/trade-backend/uploads/products/.gitkeep
+
+# Editor and OS directories
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+Thumbs.db
