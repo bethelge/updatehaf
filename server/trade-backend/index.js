@@ -9,7 +9,23 @@ const productRoutes = require("./routes/productRoutes");
 const seoRoutes = require("./routes/seoRoutes");
 
 const app = express();
-app.use(cors());
+
+const corsOrigins = (process.env.CORS_ORIGIN || process.env.FRONTEND_URL || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: corsOrigins.length
+      ? (origin, cb) => {
+          if (!origin || corsOrigins.includes(origin)) return cb(null, true);
+          return cb(null, false);
+        }
+      : true,
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -20,6 +36,10 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/media", mediaRoutes);
 app.use("/api/product", productRoutes); 
 app.use("/api/seo", seoRoutes);
+
+app.get("/health", (_req, res) => {
+  res.json({ ok: true });
+});
 
 const PORT = process.env.PORT || 5000;
 db.ensureSchema()

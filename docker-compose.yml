@@ -1,0 +1,65 @@
+# Local full stack (optional). Requires Docker Desktop.
+# Usage: docker compose up --build
+#
+# MySQL data persists in volume `mysql_data`.
+# API uploads persist in volume `api_uploads`.
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: trade_db
+      MYSQL_USER: haf
+      MYSQL_PASSWORD: hafpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-prootpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./server/trade-backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: "5000"
+      JWT_SECRET: local-dev-jwt-change-me
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_USER: haf
+      DB_PASSWORD: hafpass
+      DB_NAME: trade_db
+      CORS_ORIGIN: http://localhost:3000
+    volumes:
+      - api_uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:5000
+        VITE_API_SSR_URL: http://api:5000
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+    depends_on:
+      - api
+
+volumes:
+  mysql_data:
+  api_uploads:

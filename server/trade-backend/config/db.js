@@ -74,6 +74,7 @@ async function ensureSchema() {
       description TEXT NOT NULL,
       media_type VARCHAR(50) NOT NULL,
       media_url TEXT NOT NULL,
+      youtube_link VARCHAR(255),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `;
@@ -81,7 +82,61 @@ async function ensureSchema() {
   await queryPromise(createAdminsTable);
   await queryPromise(createProductsTable);
   await queryPromise(createMediaCoverageTable);
+  await migrateMediaCoverageColumns();
   console.log("Database schema verified.");
+}
+
+/** Existing DBs may use ENUM('image','video') — allow 'link' and long URLs. */
+async function migrateMediaCoverageColumns() {
+  const schema = process.env.DB_NAME;
+  if (!schema) return;
+
+  const rows = await queryPromise(
+    `SELECT COLUMN_NAME, COLUMN_TYPE, CHARACTER_MAXIMUM_LENGTH
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = '${schema.replace(/'/g, "''")}'
+       AND TABLE_NAME = 'media_coverage'
+       AND COLUMN_NAME IN ('media_type', 'youtube_link', 'media_url')`,
+  );
+
+  const colMap = {};
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const name = String(row.COLUMN_NAME ?? row.column_name ?? "").toLowerCase();
+    if (name) colMap[name] = row;
+  }
+
+  const mediaType = colMap.media_type;
+  if (mediaType) {
+    const type = String(mediaType.COLUMN_TYPE ?? mediaType.column_type ?? "").toLowerCase();
+    if (type.startsWith("enum") || !type.includes("varchar")) {
+      await queryPromise(
+        "ALTER TABLE media_coverage MODIFY media_type VARCHAR(50) NOT NULL",
+      );
+      console.log("[schema] media_type → VARCHAR(50) (supports image, video, link)");
+    }
+  }
+
+  const yt = colMap.youtube_link;
+  if (yt) {
+    const len = yt.CHARACTER_MAXIMUM_LENGTH ?? yt.character_maximum_length;
+    if (len != null && Number(len) < 512) {
+      await queryPromise(
+        "ALTER TABLE media_coverage MODIFY youtube_link VARCHAR(512) NULL",
+      );
+      console.log("[schema] youtube_link widened to VARCHAR(512)");
+    }
+  }
+
+  const mediaUrl = colMap.media_url;
+  if (mediaUrl) {
+    const type = String(mediaUrl.COLUMN_TYPE ?? mediaUrl.column_type ?? "").toLowerCase();
+    if (type.startsWith("varchar")) {
+      await queryPromise(
+        "ALTER TABLE media_coverage MODIFY media_url TEXT NOT NULL",
+      );
+      console.log("[schema] media_url → TEXT");
+    }
+  }
 }
 
 module.exports = db;
