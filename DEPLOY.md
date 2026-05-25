@@ -17,44 +17,63 @@ Render deploys from Git. Commit and push this repository (without `.env` files).
 
 ---
 
-## 2. Deploy with Blueprint
+## 2. Create the API service (Docker)
 
-1. Render Dashboard → **New** → **Blueprint**
-2. Connect the repo and select `render.yaml`
-3. When prompted, set **sync: false** variables for the API:
-   - `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
-   - `CORS_ORIGIN` → your frontend URL, e.g. `https://haf-web.onrender.com`
-4. Deploy both services
+1. Render Dashboard → **New** → **Web Service**
+2. Connect your repo
+3. Configure:
+   - **Name:** `haf-api`
+   - **Root directory:** `server/trade-backend`
+   - **Environment:** Docker
+   - **Region:** Frankfurt (or your preference)
+   - **Health check path:** `/health`
+4. **Environment variables:**
 
-After the API is live, open **haf-web** → **Environment** and confirm:
+   | Key | Value |
+   |-----|-------|
+   | `NODE_ENV` | `production` |
+   | `PORT` | `5000` |
+   | `JWT_SECRET` | long random string |
+   | `DB_HOST` | your MySQL host |
+   | `DB_PORT` | `3306` |
+   | `DB_USER` | your DB user |
+   | `DB_PASSWORD` | your DB password |
+   | `DB_NAME` | `trade_db` |
+   | `CORS_ORIGIN` | `https://haf-web.onrender.com` (set after web is live) |
+   | `FRONTEND_URL` | same as `CORS_ORIGIN` |
 
-- `VITE_API_BASE_URL` = `https://haf-api.onrender.com` (no trailing slash)
-- `VITE_API_SSR_URL` = same URL
-
-If you change `VITE_*` values, **redeploy the web service** (they are baked in at Docker build time).
-
----
-
-## 3. Manual Docker deploy (alternative)
-
-### API
-
-- **Root directory:** `server/trade-backend`
-- **Environment:** Docker
-- **Health check path:** `/health`
-- **Disk (recommended):** mount `/app/uploads` (1 GB+) so uploaded images survive redeploys
-
-### Web
-
-- **Root directory:** `client`
-- **Environment:** Docker
-- **Docker build args:**
-  - `VITE_API_BASE_URL` = public API URL
-  - `VITE_API_SSR_URL` = public API URL (or internal URL if using Render private networking)
+5. **Disk (recommended):** add a persistent disk, mount path `/app/uploads`, size 1 GB+ so uploaded images survive redeploys
+6. **Create Web Service** and wait until the API URL is live (e.g. `https://haf-api.onrender.com`)
 
 ---
 
-## 4. Environment variables
+## 3. Create the web service (Docker)
+
+1. **New** → **Web Service** (same repo)
+2. Configure:
+   - **Name:** `haf-web`
+   - **Root directory:** `client`
+   - **Environment:** Docker
+   - **Docker build arguments** (required — baked in at build time):
+
+     | Build arg | Value |
+     |-----------|-------|
+     | `VITE_API_BASE_URL` | `https://haf-api.onrender.com` (no trailing slash) |
+     | `VITE_API_SSR_URL` | same URL |
+
+   - **Runtime environment:**
+     - `PORT` = `3000`
+     - `NODE_ENV` = `production`
+
+3. Deploy the web service
+
+4. Go back to **haf-api** → **Environment** and set `CORS_ORIGIN` and `FRONTEND_URL` to your web URL (e.g. `https://haf-web.onrender.com`), then redeploy the API if needed
+
+If you change `VITE_*` build args later, **redeploy the web service** (they are baked in at Docker build time).
+
+---
+
+## 4. Environment variables reference
 
 ### API (`server/trade-backend`)
 
@@ -73,8 +92,8 @@ If you change `VITE_*` values, **redeploy the web service** (they are baked in a
 
 | Variable | When | Example |
 |----------|------|---------|
-| `VITE_API_BASE_URL` | Build time | `https://haf-api.onrender.com` |
-| `VITE_API_SSR_URL` | Build time | `https://haf-api.onrender.com` |
+| `VITE_API_BASE_URL` | Build time (Docker build arg) | `https://haf-api.onrender.com` |
+| `VITE_API_SSR_URL` | Build time (Docker build arg) | `https://haf-api.onrender.com` |
 | `PORT` | Runtime | `3000` |
 
 ---
@@ -95,6 +114,6 @@ Create an admin user via your usual MySQL/seed flow before logging into `/admin`
 
 ## 6. Notes
 
-- **Uploads:** Without a Render disk on the API service, files in `/uploads` are lost on redeploy. `render.yaml` includes a 1 GB disk mount.
+- **Uploads:** Without a persistent disk on the API service, files in `/app/uploads` are lost on redeploy. Mount a disk at `/app/uploads` in the Render dashboard.
 - **HTTPS:** Use `https://` URLs in `VITE_API_BASE_URL` and `CORS_ORIGIN`.
 - **Cold starts:** Free/starter plans spin down after inactivity; first request may be slow.
