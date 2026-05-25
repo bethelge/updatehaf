@@ -112,7 +112,24 @@ Create an admin user via your usual MySQL/seed flow before logging into `/admin`
 
 ---
 
-## 6. Notes
+## 6. Troubleshooting
+
+### `package-lock.json: not found` (or `package.json: not found`)
+
+Render is building from the **wrong folder**. The Docker build context must be the service folder, not the repo root.
+
+1. Open the service in Render → **Settings**
+2. Set **Root Directory** to:
+   - API: `server/trade-backend`
+   - Web: `client`
+3. Leave **Dockerfile Path** empty (Render will use `Dockerfile` inside that folder)
+4. **Save** and **Manual Deploy**
+
+Do not point Dockerfile at `./server/trade-backend/Dockerfile` while leaving Root Directory blank — that uses the repo root as context and the `COPY` steps fail.
+
+---
+
+## 7. Notes
 
 - **Uploads:** Without a persistent disk on the API service, files in `/app/uploads` are lost on redeploy. Mount a disk at `/app/uploads` in the Render dashboard.
 - **HTTPS:** Use `https://` URLs in `VITE_API_BASE_URL` and `CORS_ORIGIN`.
